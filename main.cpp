@@ -4,21 +4,29 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
+#include <glm/mat4x4.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+
+#include <glm/glm.hpp>
+#include <glm/gtc/type_ptr.hpp>
+
 const GLuint WIDTH = 800, HEIGHT = 600;
-GLuint VAO, VBO, shaders, uniformXMove;
+GLuint VAO, VBO, shaders, uniformModel;
 
 bool direction = false;
 float triOffset = 0.0f;
 float triMaxOffset = 0.7f;
 float triIncrement = 0.00005f;
 
+float curAngle = 0.0f;
+
 static const char* vShader = R"(
 #version 330
 layout (location = 0 ) in vec3 pos;
-uniform float xMove;
+uniform mat4 model;
 void main()
 {
-	gl_Position = vec4(0.4 * pos.x + xMove, 0.4 * pos.y, pos.z, 1.0f);
+	gl_Position = model * vec4(pos, 1.0f);
 }
 )";
 
@@ -117,7 +125,7 @@ void CompileShaders()
 		return;
 	}
 
-	uniformXMove = glGetUniformLocation(shaders, "xMove");
+	uniformModel = glGetUniformLocation(shaders, "model");
 }
 
 int main(int argc, char* argv[])
@@ -167,14 +175,21 @@ int main(int argc, char* argv[])
 		if (!direction)
 		{
 			triOffset += triIncrement;
+			curAngle += 0.01f;
 		}
 		else {
 			triOffset -= triIncrement;
+			curAngle -= 0.01f;
 		}
 
 		if (abs(triOffset) >= triMaxOffset)
 		{
 			direction = !direction;
+		}
+
+		if (abs(curAngle) >= 360)
+		{
+			curAngle = 0;
 		}
 
 		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -184,8 +199,16 @@ int main(int argc, char* argv[])
 		glBindVertexArray(VAO);
 		glDrawArrays(GL_TRIANGLES, 0, 3);
 
-		glUniform1f(uniformXMove, triOffset);
+		glm::mat4 model(1.0f);
+
+		model = glm::rotate(model, glm::radians(curAngle), glm::vec3(0.0f, 0.0f, 1.0f));
+
+		//model = glm::translate(model,  glm::vec3(triOffset, triOffset, 0.0f));
+
+		model = glm::scale(model, glm::vec3(0.4f));
 		
+		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+
 		glBindVertexArray(0);
 		glUseProgram(0);
 
